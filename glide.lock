@@ -1,5 +1,5 @@
-hash: 6fc5cf26af9c4ea23c86d5fab1ea02769736cf878da1c94b4edf836419ffd78f
-updated: 2016-08-05T14:08:42.755921785+02:00
+hash: f7ade4acdfd43efe6a0c1a1444776dd02d556e40bf122a495ca2fc226c880d0b
+updated: 2016-08-11T17:01:00.346437451+02:00
 imports:
 - name: github.com/abbot/go-http-auth
   version: cb4372376e1e00e9f6ab9ec142e029302c9e7140
@@ -38,89 +38,89 @@ imports:
 - name: github.com/docker/distribution
   version: 87917f30529e6a7fca8eaff2932424915fb11225
   subpackages:
-  - reference
+  - context
   - digest
+  - reference
   - registry/api/errcode
+  - registry/api/v2
+  - registry/client
   - registry/client/auth
   - registry/client/transport
-  - registry/client
-  - context
-  - registry/api/v2
   - registry/storage/cache
   - registry/storage/cache/memory
   - uuid
 - name: github.com/docker/docker
   version: 534753663161334baba06f13b8efa4cad22b5bc5
   subpackages:
-  - namesgenerator
-  - pkg/namesgenerator
-  - pkg/random
-  - pkg/urlutil
+  - api/types/backend
+  - builder
+  - builder/dockerignore
   - cliconfig
   - cliconfig/configfile
+  - daemon/graphdriver
+  - image
+  - image/v1
+  - layer
+  - namesgenerator
+  - opts
+  - pkg/archive
+  - pkg/chrootarchive
+  - pkg/fileutils
+  - pkg/gitutils
+  - pkg/homedir
+  - pkg/httputils
+  - pkg/idtools
+  - pkg/ioutils
+  - pkg/jsonlog
   - pkg/jsonmessage
+  - pkg/longpath
+  - pkg/mflag
+  - pkg/mount
+  - pkg/namesgenerator
+  - pkg/plugins
+  - pkg/plugins/transport
+  - pkg/pools
+  - pkg/progress
   - pkg/promise
+  - pkg/random
+  - pkg/reexec
+  - pkg/signal
   - pkg/stdcopy
+  - pkg/streamformatter
+  - pkg/stringid
+  - pkg/symlink
+  - pkg/system
+  - pkg/tarsum
   - pkg/term
+  - pkg/term/windows
+  - pkg/urlutil
   - reference
   - registry
   - runconfig/opts
-  - pkg/homedir
-  - pkg/jsonlog
-  - pkg/system
-  - pkg/term/windows
-  - image
-  - image/v1
-  - pkg/ioutils
-  - opts
-  - pkg/httputils
-  - pkg/mflag
-  - pkg/stringid
-  - pkg/tarsum
-  - pkg/mount
-  - pkg/signal
-  - builder
-  - builder/dockerignore
-  - pkg/archive
-  - pkg/fileutils
-  - pkg/progress
-  - pkg/streamformatter
-  - layer
-  - pkg/longpath
-  - api/types/backend
-  - pkg/chrootarchive
-  - pkg/gitutils
-  - pkg/symlink
-  - pkg/idtools
-  - pkg/pools
-  - daemon/graphdriver
-  - pkg/reexec
-  - pkg/plugins
-  - pkg/plugins/transport
 - name: github.com/docker/engine-api
   version: 62043eb79d581a32ea849645277023c550732e52
   subpackages:
   - client
-  - types
-  - types/events
-  - types/filters
-  - types/container
-  - types/network
   - client/transport
   - client/transport/cancellable
+  - types
+  - types/blkiodev
+  - types/container
+  - types/events
+  - types/filters
+  - types/network
   - types/reference
   - types/registry
+  - types/strslice
   - types/swarm
   - types/time
   - types/versions
-  - types/blkiodev
-  - types/strslice
 - name: github.com/docker/go-connections
   version: 990a1a1a70b0da4c4cb70e117971a4f0babfbf1a
   subpackages:
+  - nat
   - sockets
   - tlsconfig
-  - nat
 - name: github.com/docker/go-units
   version: f2d77a61e3c169b43402a0a1e84f06daf29b8190
 - name: github.com/docker/libcompose
@@ -128,18 +128,18 @@ imports:
   subpackages:
   - config
   - docker
-  - project
-  - project/events
-  - project/options
-  - utils
-  - yaml
   - docker/builder
   - docker/client
   - docker/network
   - labels
   - logger
   - lookup
+  - project
+  - project/events
+  - project/options
+  - utils
   - version
+  - yaml
 - name: github.com/docker/libkv
   version: aabc039ad04deb721e234f99cd1b4aa28ac71a40
   subpackages:
@@ -196,25 +196,25 @@ imports:
 - name: github.com/mesos/mesos-go
   version: 068d5470506e3780189fe607af40892814197c5e
   subpackages:
-  - mesosproto
-  - mesos
-  - upid
-  - mesosutil
   - detector
   - detector/zoo
+  - mesos
+  - mesosproto
+  - mesosutil
+  - upid
 - name: github.com/mesosphere/mesos-dns
   version: b47dc4c19f215e98da687b15b4c64e70f629bea5
   repo: https://github.com/containous/mesos-dns.git
   vcs: git
   subpackages:
   - detect
+  - errorutil
   - logging
+  - models
   - records
+  - records/labels
   - records/state
   - util
-  - errorutil
-  - models
-  - records/labels
 - name: github.com/Microsoft/go-winio
   version: ce2922f643c8fd76b46cadc7f404a06282678b34
 - name: github.com/miekg/dns
@@ -250,8 +250,8 @@ imports:
 - name: github.com/stretchr/testify
   version: d77da356e56a7428ad25149ca77381849a6a5232
   subpackages:
-  - mock
   - assert
+  - mock
 - name: github.com/thoas/stats
   version: 152b5d051953fdb6e45f14b6826962aadc032324
 - name: github.com/tv42/zbase32
@@ -267,17 +267,17 @@ imports:
 - name: github.com/vdemeester/shakers
   version: 24d7f1d6a71aa5d9cbe7390e4afb66b7eef9e1b3
 - name: github.com/vulcand/oxy
-  version: ab7796d7036b425fbc945853cd1b7e7adf43b0d6
+  version: 4298f24d572dc554eb984f2ffdf6bdd54d4bd613
   repo: https://github.com/containous/oxy.git
   vcs: git
   subpackages:
   - cbreaker
   - connlimit
   - forward
+  - memmetrics
   - roundrobin
   - stream
   - utils
-  - memmetrics
 - name: github.com/vulcand/predicate
   version: 19b9dde14240d94c804ae5736ad0e1de10bf8fe6
 - name: github.com/vulcand/route
@@ -285,9 +285,9 @@ imports:
 - name: github.com/vulcand/vulcand
   version: 28a4e5c0892167589737b95ceecbcef00295be50
   subpackages:
-  - plugin/rewrite
-  - plugin
   - conntracker
+  - plugin
+  - plugin/rewrite
   - router
 - name: github.com/xenolf/lego
   version: b2fad6198110326662e9e356a97199078a4a775c
@@ -296,15 +296,15 @@ imports:
 - name: golang.org/x/crypto
   version: d81fdb778bf2c40a91b24519d60cdc5767318829
   subpackages:
-  - ocsp
   - bcrypt
   - blowfish
+  - ocsp
 - name: golang.org/x/net
   version: b400c2eff1badec7022a8c8f5bea058b6315eed7
   subpackages:
   - context
-  - publicsuffix
   - proxy
+  - publicsuffix
 - name: golang.org/x/sys
   version: 62bee037599929a6e9146f29d10dd5208c43507d
   subpackages:
@@ -339,9 +339,9 @@ testImports:
 - name: github.com/vbatts/tar-split
   version: 6810cedb21b2c3d0b9bb8f9af12ff2dc7a2f14df
   subpackages:
+  - archive/tar
   - tar/asm
   - tar/storage
-  - archive/tar
 - name: github.com/xeipuuv/gojsonpointer
   version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
 - name: github.com/xeipuuv/gojsonreference
