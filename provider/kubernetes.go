@@ -49,6 +49,8 @@ func (ns *Namespaces) SetValue(val interface{}) {
 	*ns = Namespaces(val.(Namespaces))
 }
 
+var _ Provider = (*Kubernetes)(nil)
+
 // Kubernetes holds configurations of the Kubernetes provider.
 type Kubernetes struct {
 	BaseProvider           `mapstructure:",squash"`
@@ -104,7 +106,7 @@ func (provider *Kubernetes) Provide(configurationChan chan<- types.ConfigMessage
 			for {
 				stopWatch := make(chan bool, 5)
 				defer close(stopWatch)
-				log.Debugf("Using lable selector: %s", provider.LabelSelector)
+				log.Debugf("Using label selector: %s", provider.LabelSelector)
 				eventsChan, errEventsChan, err := k8sClient.WatchAll(provider.LabelSelector, stopWatch)
 				if err != nil {
 					log.Errorf("Error watching kubernetes events: %v", err)
@@ -154,7 +156,7 @@ func (provider *Kubernetes) Provide(configurationChan chan<- types.ConfigMessage
 		}
 		err := backoff.RetryNotify(operation, backOff, notify)
 		if err != nil {
-			log.Fatalf("Cannot connect to Kubernetes server %+v", err)
+			log.Errorf("Cannot connect to Kubernetes server %+v", err)
 		}
 	})
 

@@ -23,6 +23,8 @@ import (
 	"time"
 )
 
+var _ Provider = (*Mesos)(nil)
+
 //Mesos holds configuration of the mesos provider.
 type Mesos struct {
 	BaseProvider

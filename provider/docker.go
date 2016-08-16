@@ -27,6 +27,8 @@ import (
 // DockerAPIVersion is a constant holding the version of the Docker API traefik will use
 const DockerAPIVersion string = "1.21"
 
+var _ Provider = (*Docker)(nil)
+
 // Docker holds configurations of the Docker provider.
 type Docker struct {
 	BaseProvider     `mapstructure:",squash"`

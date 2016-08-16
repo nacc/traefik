@@ -162,13 +162,15 @@ func (dc *DomainsCertificate) needRenew() bool {
 
 // ACME allows to connect to lets encrypt and retrieve certs
 type ACME struct {
-	Email       string   `description:"Email address used for registration"`
-	Domains     []Domain `description:"SANs (alternative domains) to each main domain using format: --acme.domains='main.com,san1.com,san2.com' --acme.domains='main.net,san1.net,san2.net'"`
-	StorageFile string   `description:"File used for certificates storage."`
-	OnDemand    bool     `description:"Enable on demand certificate. This will request a certificate from Let's Encrypt during the first TLS handshake for a hostname that does not yet have a certificate."`
-	CAServer    string   `description:"CA server to use."`
-	EntryPoint  string   `description:"Entrypoint to proxy acme challenge to."`
-	storageLock sync.RWMutex
+	Email              string   `description:"Email address used for registration"`
+	Domains            []Domain `description:"SANs (alternative domains) to each main domain using format: --acme.domains='main.com,san1.com,san2.com' --acme.domains='main.net,san1.net,san2.net'"`
+	StorageFile        string   `description:"File used for certificates storage."`
+	Store              string   `description:"File or key used for certificates storage."`
+	OnDemand           bool     `description:"Enable on demand certificate. This will request a certificate from Let's Encrypt during the first TLS handshake for a hostname that does not yet have a certificate."`
+	CAServer           string   `description:"CA server to use."`
+	EntryPoint         string   `description:"Entrypoint to proxy acme challenge to."`
+	storageLock        sync.RWMutex
+	defaultCertificate *tls.Certificate
 }
 
 //Domains parse []Domain
@@ -212,33 +214,55 @@ type Domain struct {
 	SANs []string
 }
 
-// CreateConfig creates a tls.config from using ACME configuration
-func (a *ACME) CreateConfig(tlsConfig *tls.Config, CheckOnDemandDomain func(domain string) bool) error {
+func (a *ACME) init() error {
+	if len(a.Store) == 0 {
+		a.Store = a.StorageFile
+	}
 	acme.Logger = fmtlog.New(ioutil.Discard, "", 0)
-
-	if len(a.StorageFile) == 0 {
-		return errors.New("Empty StorageFile, please provide a filename for certs storage")
-	}
-
 	log.Debugf("Generating default certificate...")
-	if len(tlsConfig.Certificates) == 0 {
-		// no certificates in TLS config, so we add a default one
-		cert, err := generateDefaultCertificate()
-		if err != nil {
-			return err
-		}
-		tlsConfig.Certificates = append(tlsConfig.Certificates, *cert)
+	// no certificates in TLS config, so we add a default one
+	cert, err := generateDefaultCertificate()
+	if err != nil {
+		return err
 	}
+	a.defaultCertificate = cert
+	return nil
+}
+
+// CreateClusterConfig creates a tls.config from using ACME configuration
+func (a *ACME) CreateClusterConfig(tlsConfig *tls.Config, CheckOnDemandDomain func(domain string) bool) error {
+	err := a.init()
+	if err != nil {
+		return err
+	}
+	if len(a.Store) == 0 {
+		return errors.New("Empty Store, please provide a filename/key for certs storage")
+	}
+	tlsConfig.Certificates = append(tlsConfig.Certificates, *a.defaultCertificate)
+	return nil
+}
+
+// CreateLocalConfig creates a tls.config from using ACME configuration
+func (a *ACME) CreateLocalConfig(tlsConfig *tls.Config, CheckOnDemandDomain func(domain string) bool) error {
+	err := a.init()
+	if err != nil {
+		return err
+	}
+	if len(a.Store) == 0 {
+		return errors.New("Empty Store, please provide a filename/key for certs storage")
+	}
+	tlsConfig.Certificates = append(tlsConfig.Certificates, *a.defaultCertificate)
+
 	var account *Account
 	var needRegister bool
 
 	// if certificates in storage, load them
-	if fileInfo, err := os.Stat(a.StorageFile); err == nil && fileInfo.Size() != 0 {
+	if fileInfo, fileErr := os.Stat(a.Store); fileErr == nil && fileInfo.Size() != 0 {
 		log.Infof("Loading ACME certificates...")
 		// load account
-		account, err = a.loadAccount(a)
-		if err != nil {
-			return err
+		account, fileErr = a.loadAccount(a)
+		if fileErr != nil {
+			return fileErr
 		}
 	} else {
 		log.Infof("Generating ACME Account...")
@@ -261,13 +285,16 @@ func (a *ACME) CreateConfig(tlsConfig *tls.Config, CheckOnDemandDomain func(doma
 	}
 	client.ExcludeChallenges([]acme.Challenge{acme.HTTP01, acme.DNS01})
 	wrapperChallengeProvider := newWrapperChallengeProvider()
-	client.SetChallengeProvider(acme.TLSSNI01, wrapperChallengeProvider)
+	err = client.SetChallengeProvider(acme.TLSSNI01, wrapperChallengeProvider)
+	if err != nil {
+		return err
+	}
 
 	if needRegister {
 		// New users will need to register; be sure to save it
-		reg, err := client.Register()
-		if err != nil {
-			return err
+		reg, registerErr := client.Register()
+		if registerErr != nil {
+			return registerErr
 		}
 		account.Registration = reg
 	}
@@ -304,12 +331,9 @@ func (a *ACME) CreateConfig(tlsConfig *tls.Config, CheckOnDemandDomain func(doma
 
 	ticker := time.NewTicker(24 * time.Hour)
 	safe.Go(func() {
-		for {
-			select {
-			case <-ticker.C:
-				if err := a.renewCertificates(client, account); err != nil {
-					log.Errorf("Error renewing ACME certificate %+v: %s", account, err.Error())
-				}
+		for range ticker.C {
+			if err := a.renewCertificates(client, account); err != nil {
+				log.Errorf("Error renewing ACME certificate %+v: %s", account, err.Error())
 			}
 		}
 
@@ -417,22 +441,22 @@ func (a *ACME) loadCertificateOnDemand(client *acme.Client, Account *Account, cl
 func (a *ACME) loadAccount(acmeConfig *ACME) (*Account, error) {
 	a.storageLock.RLock()
 	defer a.storageLock.RUnlock()
-	Account := Account{
+	account := Account{
 		DomainsCertificate: DomainsCertificates{},
 	}
-	file, err := ioutil.ReadFile(acmeConfig.StorageFile)
+	file, err := ioutil.ReadFile(acmeConfig.Store)
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(file, &Account); err != nil {
+	if err := json.Unmarshal(file, &account); err != nil {
 		return nil, err
 	}
-	err = Account.DomainsCertificate.init()
+	err = account.DomainsCertificate.init()
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Loaded ACME config from storage %s", acmeConfig.StorageFile)
-	return &Account, nil
+	log.Infof("Loaded ACME config from store %s", acmeConfig.Store)
+	return &account, nil
 }
 
 func (a *ACME) saveAccount(Account *Account) error {
@@ -443,7 +467,7 @@ func (a *ACME) saveAccount(Account *Account) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(a.StorageFile, data, 0644)
+	return ioutil.WriteFile(a.Store, data, 0644)
 }
 
 func (a *ACME) getDomainsCertificates(client *acme.Client, domains []string) (*Certificate, error) {
