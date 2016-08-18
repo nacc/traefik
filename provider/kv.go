@@ -137,7 +137,7 @@ func (provider *Kv) list(keys ...string) []string {
 	joinedKeys := strings.Join(keys, "")
 	keysPairs, err := provider.kvclient.List(joinedKeys)
 	if err != nil {
-		log.Errorf("Error getting keys %s %s ", joinedKeys, err)
+		log.Warnf("Cannot get keys %s %s ", joinedKeys, err)
 		return nil
 	}
 	directoryKeys := make(map[string]string)
@@ -152,10 +152,10 @@ func (provider *Kv) get(defaultValue string, keys ...string) string {
 	joinedKeys := strings.Join(keys, "")
 	keyPair, err := provider.kvclient.Get(strings.TrimPrefix(joinedKeys, "/"))
 	if err != nil {
-		log.Warnf("Error getting key %s %s, setting default %s", joinedKeys, err, defaultValue)
+		log.Warnf("Cannot get key %s %s, setting default %s", joinedKeys, err, defaultValue)
 		return defaultValue
 	} else if keyPair == nil {
-		log.Warnf("Error getting key %s, setting default %s", joinedKeys, defaultValue)
+		log.Warnf("Cannot get key %s, setting default %s", joinedKeys, defaultValue)
 		return defaultValue
 	}
 	return string(keyPair.Value)
@@ -165,10 +165,10 @@ func (provider *Kv) splitGet(keys ...string) []string {
 	joinedKeys := strings.Join(keys, "")
 	keyPair, err := provider.kvclient.Get(joinedKeys)
 	if err != nil {
-		log.Warnf("Error getting key %s %s, setting default empty", joinedKeys, err)
+		log.Warnf("Cannot get key %s %s, setting default empty", joinedKeys, err)
 		return []string{}
 	} else if keyPair == nil {
-		log.Warnf("Error getting key %s, setting default %empty", joinedKeys)
+		log.Warnf("Cannot get key %s, setting default %empty", joinedKeys)
 		return []string{}
 	}
 	return strings.Split(string(keyPair.Value), ",")

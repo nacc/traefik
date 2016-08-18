@@ -194,7 +194,7 @@ type Store struct {
 // Cluster holds cluster config
 type Cluster struct {
 	Node  string
-	Store Store
+	Store *Store
 }
 
 // Auth holds authentication configuration (BASIC, DIGEST, users)

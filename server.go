@@ -23,6 +23,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/negroni"
 	"github.com/containous/mux"
+	"github.com/containous/traefik/cluster"
 	"github.com/containous/traefik/middlewares"
 	"github.com/containous/traefik/provider"
 	"github.com/containous/traefik/safe"
@@ -49,7 +50,8 @@ type Server struct {
 	currentConfigurations      safe.Safe
 	globalConfiguration        GlobalConfiguration
 	loggerMiddleware           *middlewares.Logger
-	routinesPool               safe.Pool
+	routinesPool               *safe.Pool
+	leadership                 *cluster.Leadership
 }
 
 type serverEntryPoints map[string]*serverEntryPoint
@@ -79,12 +81,18 @@ func NewServer(globalConfiguration GlobalConfiguration) *Server {
 	server.currentConfigurations.Set(currentConfigurations)
 	server.globalConfiguration = globalConfiguration
 	server.loggerMiddleware = middlewares.NewLogger(globalConfiguration.AccessLogsFile)
+	server.routinesPool = safe.NewPool(context.Background())
+	if globalConfiguration.Cluster != nil {
+		// leadership creation if cluster mode
+		server.leadership = cluster.NewLeadership(server.routinesPool.Ctx(), globalConfiguration.Cluster)
+	}
 
 	return server
 }
 
 // Start starts the server and blocks until server is shutted down.
 func (server *Server) Start() {
+	server.startLeadership()
 	server.startHTTPServers()
 	server.routinesPool.Go(func(stop chan bool) {
 		server.listenProviders(stop)
@@ -124,6 +132,7 @@ func (server *Server) Close() {
 			os.Exit(1)
 		}
 	}(ctx)
+	server.stopLeadership()
 	server.routinesPool.Stop()
 	close(server.configurationChan)
 	close(server.configurationValidatedChan)
@@ -132,6 +141,23 @@ func (server *Server) Close() {
 	close(server.stopChan)
 	server.loggerMiddleware.Close()
 	cancel()
+}
+
+func (server *Server) startLeadership() {
+	if server.leadership != nil {
+		server.leadership.Participate()
+		server.leadership.GoCtx(func(ctx context.Context) {
+			log.Debugf("Started test routine")
+			<-ctx.Done()
+			log.Debugf("Stopped test routine")
+		})
+	}
+}
+
+func (server *Server) stopLeadership() {
+	if server.leadership != nil {
+		server.leadership.Resign()
+	}
 }
 
 func (server *Server) startHTTPServers() {
@@ -296,7 +322,7 @@ func (server *Server) startProviders() {
 		log.Infof("Starting provider %v %s", reflect.TypeOf(provider), jsonConf)
 		currentProvider := provider
 		safe.Go(func() {
-			err := currentProvider.Provide(server.configurationChan, &server.routinesPool, server.globalConfiguration.Constraints)
+			err := currentProvider.Provide(server.configurationChan, server.routinesPool, server.globalConfiguration.Constraints)
 			if err != nil {
 				log.Errorf("Error starting provider %s", err)
 			}
