@@ -1,0 +1,30 @@
+name: traefik
+version: 1.0.2
+summary: Træfik, a modern reverse proxy
+description: Træfɪk is a modern HTTP reverse proxy and load balancer made to deploy microservices with ease. It supports several backends (Docker, Swarm, Mesos/Marathon, Mesos, Kubernetes, Consul, Etcd, Zookeeper, BoltDB, Rest API, file...) to manage its configuration automatically and dynamically.
+confinement: strict
+
+#apps:
+#    traefik-daemon:
+#        command: bin/traefik --configFile=$SNAP/traefik.toml
+#        daemon: simple
+#        plugs: [network-bind]
+#    traefik:
+#        command: bin/traefik
+#        plugs: [network-bind]
+
+parts:
+    traefik:
+        plugin: glide
+        go-importpath: github.com/containous/traefik
+        source: .
+        build-packages:
+           - git
+        after:
+            - glide
+
+    glide:
+        plugin: go
+        go-importpath: github.com/Masterminds/glide
+        source: https://github.com/Masterminds/glide.git
+        source-branch: master
